@@ -45,29 +45,11 @@ foreach ($app in $apps) {
 }
 
 # Install WSL Ubuntu 24.04
-Write-Host "🐧 Installing Ubuntu 24.04 on WSL..." -ForegroundColor Blue
+Write-Host "🐧 Installing WSL and Ubuntu 24.04..." -ForegroundColor Blue
 wsl --install --distribution Ubuntu-24.04
-
-# Refresh PATH
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-# Clone the setup repository (for WSL ansible scripts)
-$setupPath = "$env:USERPROFILE\windows_setup"
-if (Test-Path $setupPath) {
-    Write-Host "📁 Setup directory already exists, updating..." -ForegroundColor Yellow
-    Set-Location $setupPath
-    git pull
-} else {
-    Write-Host "📥 Cloning setup repository..." -ForegroundColor Blue
-    git clone https://gitlab.com/alain-cheng/windows_setup.git $setupPath
-    Set-Location $setupPath
-}
 
 Write-Host "🎉 Windows setup completed successfully!" -ForegroundColor Green
 Write-Host "⚠️  REBOOT REQUIRED for WSL to work properly" -ForegroundColor Red
-Write-Host "📍 Setup files are in: $setupPath" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "🔄 After reboot:" -ForegroundColor Yellow
-Write-Host "   1. Open Ubuntu from Start Menu to finish WSL setup" -ForegroundColor Gray
-Write-Host "   2. Run the Ansible playbook inside WSL for dev tools" -ForegroundColor Gray
-Write-Host "   3. Add Chinese keyboard in Windows Settings" -ForegroundColor Gray
+Write-Host "   • Open Ubuntu from Start Menu to configure WSL" -ForegroundColor Gray
