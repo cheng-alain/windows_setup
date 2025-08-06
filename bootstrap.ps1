@@ -23,26 +23,35 @@ try {
     exit 1
 }
 
-# Install Git
-Write-Host "📦 Installing Git..." -ForegroundColor Blue
-winget install --id Git.Git --exact --silent --accept-package-agreements --accept-source-agreements
+# Enable WSL feature
+Write-Host "🐧 Enabling WSL feature..." -ForegroundColor Blue
+dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
 
-# Refresh PATH to use git immediately
+# Install applications via winget
+$apps = @(
+    @{Name="7-Zip"; Id="7zip.7zip"},
+    @{Name="Git"; Id="Git.Git"},
+    @{Name="Docker Desktop"; Id="Docker.DockerDesktop"},
+    @{Name="Visual Studio Code"; Id="Microsoft.VisualStudioCode"},
+    @{Name="Firefox"; Id="Mozilla.Firefox"},
+    @{Name="Chromium"; Id="Chromium.Chromium"},
+    @{Name="Discord"; Id="Discord.Discord"}
+)
+
+foreach ($app in $apps) {
+    Write-Host "📦 Installing $($app.Name)..." -ForegroundColor Blue
+    winget install --id $($app.Id) --exact --silent --accept-package-agreements --accept-source-agreements
+}
+
+# Install WSL Ubuntu 24.04
+Write-Host "🐧 Installing Ubuntu 24.04 on WSL..." -ForegroundColor Blue
+wsl --install --distribution Ubuntu-24.04
+
+# Refresh PATH
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-# Install Python (needed for Ansible)
-Write-Host "🐍 Installing Python..." -ForegroundColor Blue
-winget install --id Python.Python.3.12 --exact --silent --accept-package-agreements --accept-source-agreements
-
-# Refresh PATH again
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-# Install Ansible via pip
-Write-Host "🔧 Installing Ansible..." -ForegroundColor Blue
-python -m pip install --upgrade pip
-python -m pip install ansible
-
-# Clone the setup repository
+# Clone the setup repository (for WSL ansible scripts)
 $setupPath = "$env:USERPROFILE\windows_setup"
 if (Test-Path $setupPath) {
     Write-Host "📁 Setup directory already exists, updating..." -ForegroundColor Yellow
@@ -50,12 +59,15 @@ if (Test-Path $setupPath) {
     git pull
 } else {
     Write-Host "📥 Cloning setup repository..." -ForegroundColor Blue
-    git clone https://github.com/VOTRE_USERNAME/windows_setup.git $setupPath
+    git clone https://gitlab.com/alain-cheng/windows_setup.git $setupPath
     Set-Location $setupPath
 }
 
-Write-Host "🎉 Bootstrap completed successfully!" -ForegroundColor Green
+Write-Host "🎉 Windows setup completed successfully!" -ForegroundColor Green
+Write-Host "⚠️  REBOOT REQUIRED for WSL to work properly" -ForegroundColor Red
 Write-Host "📍 Setup files are in: $setupPath" -ForegroundColor Cyan
-Write-Host "🚀 Next step: Run the Ansible playbook" -ForegroundColor Cyan
-Write-Host "   cd $setupPath" -ForegroundColor Gray
-Write-Host "   ansible-playbook playbook-windows.yml" -ForegroundColor Gray
+Write-Host ""
+Write-Host "🔄 After reboot:" -ForegroundColor Yellow
+Write-Host "   1. Open Ubuntu from Start Menu to finish WSL setup" -ForegroundColor Gray
+Write-Host "   2. Run the Ansible playbook inside WSL for dev tools" -ForegroundColor Gray
+Write-Host "   3. Add Chinese keyboard in Windows Settings" -ForegroundColor Gray
