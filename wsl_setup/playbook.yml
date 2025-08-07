@@ -1,0 +1,11 @@
+---
+- name: Setup WSL Development Environment
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Setup Docker
+      include_role:
+        name: docker
+      tags:
+        - docker
