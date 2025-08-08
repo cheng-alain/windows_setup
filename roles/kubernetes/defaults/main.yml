@@ -1,0 +1,8 @@
+---
+kubectl_bin_path: /usr/local/bin/kubectl
+helm_bin_path: /usr/local/bin/helm
+kubectl_version_url: https://dl.k8s.io/release/stable.txt
+helm_releases_url: https://api.github.com/repos/helm/helm/releases/latest
+kubectl_download_url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+helm_download_url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+cleanup_downloads: true
