@@ -1,0 +1,106 @@
+---
+- name: Remove old Go installation if exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/go
+    state: absent
+
+- name: Get latest Go version from official API
+  ansible.builtin.uri:
+    url: https://go.dev/dl/?mode=json
+    return_content: true
+  register: go_releases
+
+- name: Set Go version variable
+  ansible.builtin.set_fact:
+    go_version: "{{ go_releases.json[0].version }}"
+    go_filename: "{{ go_releases.json[0].files | selectattr('os', 'equalto', 'linux') | selectattr('arch', 'equalto', 'amd64') | selectattr('kind', 'equalto', 'archive') | map(attribute='filename') | first }}"
+
+- name: Display Go version to be installed
+  ansible.builtin.debug:
+    msg: "Installing Go {{ go_version }}"
+
+- name: Download Go archive
+  ansible.builtin.get_url:
+    url: "https://go.dev/dl/{{ go_filename }}"
+    dest: "/tmp/{{ go_filename }}"
+    mode: '0644'
+
+- name: Extract Go to /usr/local
+  become: true
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ go_filename }}"
+    dest: /usr/local
+    remote_src: true
+    owner: root
+    group: root
+
+- name: Create GOPATH directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ go_path }}"
+    - "{{ go_path }}/src"
+    - "{{ go_path }}/bin"
+    - "{{ go_path }}/pkg"
+
+- name: Configure Go environment in bashrc
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    block: |
+      # Go configuration
+      export GOROOT={{ go_root }}
+      export GOPATH={{ go_path }}
+      export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Go environment"
+    create: true
+    mode: '0644'
+
+- name: Source bashrc to load Go environment for current session
+  ansible.builtin.shell: source {{ ansible_env.HOME }}/.bashrc
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Install Go development tools
+  ansible.builtin.shell: |
+    export GOROOT={{ go_root }}
+    export GOPATH={{ go_path }}
+    export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+    {{ go_root }}/bin/go install {{ item }}
+  loop: "{{ go_tools }}"
+  args:
+    executable: /bin/bash
+  register: go_tools_result
+  changed_when: "'downloading' in go_tools_result.stderr or 'building' in go_tools_result.stderr"
+  failed_when: go_tools_result.rc != 0 and 'no Go files' not in go_tools_result.stderr
+
+- name: Verify Go installation
+  ansible.builtin.shell: |
+    export GOROOT={{ go_root }}
+    export GOPATH={{ go_path }}
+    export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+    {{ go_root }}/bin/go version
+  register: go_version_check
+  changed_when: false
+
+- name: Display installation success
+  ansible.builtin.debug:
+    msg: |
+      Go installation completed successfully!
+      
+      Version: {{ go_version_check.stdout }}
+      GOROOT: {{ go_root }}
+      GOPATH: {{ go_path }}
+      
+      Installed tools:
+      {{ go_tools | join('\n') }}
+      
+      Please run 'source ~/.bashrc' or start a new terminal session to use Go.
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/{{ go_filename }}"
+    state: absent
