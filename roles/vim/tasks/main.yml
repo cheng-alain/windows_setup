@@ -1,0 +1,72 @@
+---
+- name: Install vim
+  become: true
+  ansible.builtin.apt:
+    name: vim
+    state: present
+    update_cache: true
+
+- name: Install curl (required for vim-plug)
+  become: true
+  ansible.builtin.apt:
+    name: curl
+    state: present
+
+- name: Create vim directories
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.vim/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - autoload
+    - plugged
+
+- name: Download vim-plug
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    dest: "{{ ansible_env.HOME }}/.vim/autoload/plug.vim"
+    mode: '0644'
+
+- name: Create .vimrc with configuration and ALE plugin
+  ansible.builtin.copy:
+    content: |
+      " Basic configuration
+      set number
+      set shiftwidth=4
+      set tabstop=4
+      set nobackup
+      set ignorecase
+
+      " vim-plug plugin manager
+      call plug#begin('~/.vim/plugged')
+
+      " ALE (Asynchronous Lint Engine)
+      Plug 'dense-analysis/ale'
+
+      call plug#end()
+
+      " ALE configuration (default settings)
+      let g:ale_completion_enabled = 1
+      let g:ale_sign_column_always = 1
+    dest: "{{ ansible_env.HOME }}/.vimrc"
+    mode: '0644'
+
+- name: Install vim plugins
+  ansible.builtin.command: vim +PlugInstall +qall
+  register: plugin_install
+  changed_when: "'Already up to date' not in plugin_install.stdout"
+  failed_when: plugin_install.rc != 0
+
+- name: Display installation success
+  ansible.builtin.debug:
+    msg: |
+      Vim configuration completed successfully!
+      
+      Configuration applied:
+      - Line numbers enabled
+      - 4 spaces indentation
+      - No backup files
+      - Case insensitive search
+      - ALE plugin installed for linting
+      
+      Vim is ready for use!
