@@ -1,0 +1,89 @@
+---
+- name: Install required packages for VSCode
+  become: true
+  ansible.builtin.apt:
+    name:
+      - wget
+      - gpg
+      - software-properties-common
+      - apt-transport-https
+    state: present
+    update_cache: true
+
+- name: Add Microsoft GPG key for VSCode repository
+  become: true
+  ansible.builtin.get_url:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    dest: /tmp/microsoft.asc
+    mode: '0644'
+
+- name: Import Microsoft GPG key
+  become: true
+  ansible.builtin.shell: gpg --dearmor < /tmp/microsoft.asc > /etc/apt/keyrings/packages.microsoft.gpg
+  args:
+    creates: /etc/apt/keyrings/packages.microsoft.gpg
+
+- name: Add VSCode repository
+  become: true
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+    filename: vscode
+    state: present
+
+- name: Install VSCode
+  become: true
+  ansible.builtin.apt:
+    name: code
+    state: present
+    update_cache: true
+
+- name: Install VSCode extensions
+  ansible.builtin.command: code --install-extension {{ item }}
+  loop: "{{ vscode_extensions }}"
+  register: extension_install
+  changed_when: "'already installed' not in extension_install.stdout"
+  failed_when: extension_install.rc != 0
+
+- name: Create VSCode settings directory
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/Code/User"
+    state: directory
+    mode: '0755'
+
+- name: Configure VSCode settings (minimal dark theme)
+  ansible.builtin.copy:
+    content: |
+      {
+          "workbench.colorTheme": "Dark+ (default dark)",
+          "editor.fontSize": 14,
+          "editor.tabSize": 4,
+          "editor.insertSpaces": true,
+          "files.autoSave": "onFocusChange",
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "go.toolsManagement.autoUpdate": true,
+          "go.useLanguageServer": true
+      }
+    dest: "{{ ansible_env.HOME }}/.config/Code/User/settings.json"
+    mode: '0644'
+
+- name: Display installation success
+  ansible.builtin.debug:
+    msg: |
+      VSCode installation completed successfully!
+      
+      Installed extensions:
+      {{ vscode_extensions | join('\n') }}
+      
+      Configuration:
+      - Dark theme enabled
+      - Basic editor settings configured
+      - Go tools auto-update enabled
+      - Auto-save on focus change
+      
+      VSCode is ready for development!
+      Launch with: code
+
+- name: Clean up temporary files
+  ansible.builtin.file:
+    path: /tmp/microsoft.asc
+    state: absent
