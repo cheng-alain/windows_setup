@@ -1,0 +1,27 @@
+---
+openlens_repo_url: https://api.github.com/repos/MuhammedKalkan/OpenLens/releases/latest
+openlens_package_pattern: ".*amd64\\.deb$"
+openlens_install_path: /opt/OpenLens
+openlens_binary_path: /opt/OpenLens/open-lens
+gui_packages:
+  - xdg-utils
+  - libgtk-3-0
+  - libnotify4
+  - libnss3
+  - libxss1
+  - libxtst6
+  - xauth
+  - libxrandr2
+  - libasound2
+  - libpangocairo-1.0-0
+  - libatk1.0-0
+  - libcairo2
+  - libdrm2
+  - libxcomposite1
+  - libxdamage1
+  - libxfixes3
+  - libgconf-2-4
+  - libxkbfile1
+  - libatspi2.0-0
+  - libsecret-1-0
+cleanup_package: true

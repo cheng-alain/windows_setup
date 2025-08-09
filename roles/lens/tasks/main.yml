@@ -1,0 +1,83 @@
+---
+- name: Install required packages for GUI applications in WSL
+  become: true
+  ansible.builtin.apt:
+    name:
+      - wget
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - xdg-utils
+      - libgtk-3-0
+      - libnotify4
+      - libnss3
+      - libxss1
+      - libxtst6
+      - xauth
+      - libxrandr2
+      - libasound2
+      - libpangocairo-1.0-0
+      - libatk1.0-0
+      - libcairo2
+      - libdrm2
+      - libxcomposite1
+      - libxdamage1
+      - libxfixes3
+      - libxss1
+      - libgconf-2-4
+      - libxkbfile1
+      - libatspi2.0-0
+      - libdrm2
+      - libxkbfile1
+      - libsecret-1-0
+    state: present
+    update_cache: true
+
+- name: Get latest OpenLens release from GitHub API
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/MuhammedKalkan/OpenLens/releases/latest
+    return_content: true
+  register: openlens_release
+
+- name: Find the .deb package download URL
+  ansible.builtin.set_fact:
+    openlens_deb_url: "{{ item.browser_download_url }}"
+  loop: "{{ openlens_release.json.assets }}"
+  when: item.name is match(".*amd64\\.deb$")
+
+- name: Display OpenLens version to be installed
+  ansible.builtin.debug:
+    msg: "Installing OpenLens {{ openlens_release.json.tag_name }}"
+
+- name: Download OpenLens .deb package
+  ansible.builtin.get_url:
+    url: "{{ openlens_deb_url }}"
+    dest: "/tmp/openlens.deb"
+    mode: '0644'
+
+- name: Install OpenLens package
+  become: true
+  ansible.builtin.apt:
+    deb: "/tmp/openlens.deb"
+    state: present
+
+- name: Create desktop entry for OpenLens (if not exists)
+  ansible.builtin.copy:
+    content: |
+      [Desktop Entry]
+      Name=OpenLens
+      Comment=Kubernetes IDE
+      Exec=/opt/OpenLens/open-lens
+      Icon=/opt/OpenLens/resources/app/dist/src/renderer/components/icon/logo-lens.svg
+      Terminal=false
+      Type=Application
+      Categories=Development;
+      StartupWMClass=OpenLens
+    dest: "{{ ansible_env.HOME }}/.local/share/applications/openlens.desktop"
+    mode: '0644'
+  ignore_errors: true
+
+- name: Check WSL display configuration
+  ansible.builtin.shell: echo $DISPLAY
+  register: wsl_display
+  changed_when: false
